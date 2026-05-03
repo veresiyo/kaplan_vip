@@ -1,0 +1,63 @@
+name: Flight Status Monitor
+
+on:
+    # Her 5 dakikada bir çalış (UTC saatinde)
+    schedule:
+        - cron: "*/5 * * * *"
+
+    # Manual tetikleme
+    workflow_dispatch:
+
+jobs:
+    update-flights:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+
+        steps:
+            - name: 📥 Checkout code
+              uses: actions/checkout@v4
+
+            - name: 🐍 Set up Python 3.11
+              uses: actions/setup-python@v4
+              with:
+                  python-version: "3.11"
+                  cache: "pip"
+
+            - name: 📦 Install dependencies
+              run: |
+                  python -m pip install --upgrade pip
+                  pip install firebase-admin requests
+
+            - name: 🔐 Decode Firebase Service Account Key
+              run: |
+                  mkdir -p secrets
+                  echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > secrets/serviceAccountKey.json
+                  # Doğrulama: valid JSON mi?
+                  python -c "import json; json.load(open('secrets/serviceAccountKey.json'))"
+
+            - name: 🚀 Run Flight Scraper
+              env:
+                  FIREBASE_CREDENTIALS: secrets/serviceAccountKey.json
+                  ENVIRONMENT: production
+              run: |
+                  python scripts/flight_scraper.py --once
+                  echo "✅ Flight scraper başarıyla çalıştı"
+
+            - name: 📊 Log Summary
+              if: success()
+              run: |
+                  echo "✅ Workflow başarılı olarak tamamlandı"
+                  echo "⏱️ Tarih: $(date -u)"
+                  echo "🔥 Proje: kaplanvip-1fad8"
+
+            - name: ⚠️ Error Notification
+              if: failure()
+              run: |
+                  echo "❌ Workflow başarısız oldu"
+                  echo "📝 Log: ${{ job.status }}"
+
+            - name: 🧹 Cleanup Secrets
+              if: always()
+              run: |
+                  rm -f secrets/serviceAccountKey.json
+                  rm -rf secrets/

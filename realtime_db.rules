@@ -1,0 +1,81 @@
+{
+  "rules": {
+    // ============================================
+    // 🚀 DEVELOPMENT MODE (İlk Kurulum İçin)
+    // ============================================
+    // Şimdilik herkesin okuma/yazma yapabilmesini sağlıyoruz
+    // ⚠️ UYARI: Production'a geçerken bu rules değiştirilmeli!
+    
+    "live_data": {
+      // ==========================================
+      // 🚗 Araç Konumları (Real-time GPS)
+      // ==========================================
+      "vehicles": {
+        "$vehicleId": {
+          // Okuma: Authenticated users
+          ".read": "auth != null",
+          
+          // Yazma: Driver kendi aracının konumunu yazabilir veya Admin
+          ".write": "auth != null && (auth.uid == $vehicleId || root.child('admin_ids').child(auth.uid).exists())",
+          
+          // Veri doğrulama
+          ".validate": "newData.hasChildren(['latitude', 'longitude', 'status', 'last_updated']) && newData.isNumber()",
+          
+          "latitude": {
+            ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+          },
+          "longitude": {
+            ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+          },
+          "status": {
+            ".validate": "newData.isString() && newData.val().matches(/^(idle|with_passenger|en_route|maintenance)$/)"
+          },
+          "last_updated": {
+            ".validate": "newData.isNumber()"
+          }
+        }
+      }
+    },
+    
+    "live_flights": {
+      // ==========================================
+      // ✈️ Uçuş Durumları (Python Scraper yazıyor)
+      // ==========================================
+      "$flightNumber": {
+        // Okuma: Herkese açık (sistem herkesin görmesine izin ver)
+        ".read": true,
+        
+        // Yazma: Service account (Python scraper) ve Admin
+        ".write": "auth != null && (auth.uid == 'python-scraper' || root.child('admin_ids').child(auth.uid).exists())",
+        
+        // Veri doğrulama
+        ".validate": "newData.hasChildren(['status', 'estimated_time', 'terminal']) && newData.isObject()",
+        
+        "status": {
+          ".validate": "newData.isString() && newData.val().matches(/^(on_time|delayed|landed|cancelled)$/)"
+        },
+        "estimated_time": {
+          ".validate": "newData.isString()"
+        },
+        "terminal": {
+          ".validate": "newData.isString() && newData.val().matches(/^(T1|T2|CIP)$/)"
+        },
+        "last_updated": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+    
+    "admin_ids": {
+      // Admin kullanıcılarının UIDs'lerini tutuyoruz
+      ".read": "auth != null && auth.uid == 'system'",
+      ".write": "auth != null && auth.uid == 'system'"
+    },
+    
+    // ============================================
+    // 🔒 Varsayılan: Herkese kapılı
+    // ============================================
+    ".read": false,
+    ".write": false
+  }
+}
