@@ -15,10 +15,10 @@ jobs:
 
         steps:
             - name: 📥 Checkout code
-              uses: actions/checkout@v6
+              uses: actions/checkout@v4
 
             - name: 🐍 Set up Python 3.11
-              uses: actions/setup-python@v6
+              uses: actions/setup-python@v5
               with:
                   python-version: "3.11"
 
@@ -30,13 +30,14 @@ jobs:
             - name: 🔐 Decode Firebase Service Account Key
               run: |
                   mkdir -p scripts
-                  echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > scripts/serviceAccountKey.json
+                  # Secret'ı base64'ten decode et
+                  echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT_BASE64 }}" | base64 -d > scripts/serviceAccountKey.json
                   # Doğrulama: valid JSON mi?
                   python -c "import json; json.load(open('scripts/serviceAccountKey.json'))"
 
             - name: 🚀 Run Flight Scraper
               env:
-                  FIREBASE_CREDENTIALS: secrets/serviceAccountKey.json
+                  FIREBASE_CREDENTIALS: scripts/serviceAccountKey.json
                   ENVIRONMENT: production
               run: |
                   python scripts/flight_scraper.py --once
@@ -53,10 +54,9 @@ jobs:
               if: failure()
               run: |
                   echo "❌ Workflow başarısız oldu"
-                  echo "📝 Log: ${{ job.status }}"
+                  echo "📝 Status: ${{ job.status }}"
 
-            - name: 🧹 Cleanup Secrets
+            - name: 🧹 Cleanup
               if: always()
               run: |
-                  rm -f secrets/serviceAccountKey.json
-                  rm -rf secrets/
+                  rm -f scripts/serviceAccountKey.json 2>/dev/null || true
