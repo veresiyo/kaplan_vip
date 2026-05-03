@@ -21,19 +21,18 @@ jobs:
               uses: actions/setup-python@v5
               with:
                   python-version: "3.11"
-                  cache: "pip"
 
             - name: 📦 Install dependencies
               run: |
                   python -m pip install --upgrade pip
-                  pip install firebase-admin requests
+                  pip install -r requirements.txt
 
             - name: 🔐 Decode Firebase Service Account Key
               run: |
-                  mkdir -p secrets
-                  echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > secrets/serviceAccountKey.json
+                  mkdir -p scripts
+                  echo "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" > scripts/serviceAccountKey.json
                   # Doğrulama: valid JSON mi?
-                  python -c "import json; json.load(open('secrets/serviceAccountKey.json'))"
+                  python -c "import json; json.load(open('scripts/serviceAccountKey.json'))"
 
             - name: 🚀 Run Flight Scraper
               env:
